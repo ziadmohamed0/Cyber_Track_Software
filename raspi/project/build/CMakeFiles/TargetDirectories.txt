@@ -1,0 +1,3 @@
+/home/pi/project/build/CMakeFiles/device_driver.dir
+/home/pi/project/build/CMakeFiles/edit_cache.dir
+/home/pi/project/build/CMakeFiles/rebuild_cache.dir
