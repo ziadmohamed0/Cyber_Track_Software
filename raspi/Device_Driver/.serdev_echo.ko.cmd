@@ -1,0 +1,1 @@
+savedcmd_/home/pi/Device_Driver/serdev_echo.ko := aarch64-linux-gnu-ld -r -EL  -maarch64elf -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T arch/arm64/module.lds -o /home/pi/Device_Driver/serdev_echo.ko /home/pi/Device_Driver/serdev_echo.o /home/pi/Device_Driver/serdev_echo.mod.o /home/pi/Device_Driver/.module-common.o
