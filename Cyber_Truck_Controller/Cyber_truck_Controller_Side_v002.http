@@ -1,0 +1,239 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CyberTruck BLE/Wi-Fi Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --pad:18px }
+    /* Background */
+  body{
+      background: url("robotics_corner_logo.jpeg") no-repeat center center fixed;
+      background-size: cover;
+      font-family: system-ui, Segoe UI, Arial;
+      color: #fff;                      /* white text */
+      margin: var(--pad);
+      display: grid; gap:16px; place-items:center;
+    }
+
+    .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap }
+    .topbar{ width:100%; max-width:980px; display:flex; justify-content:space-between; align-items:center }
+
+    /* Pills / cards */
+    .status, #mode{
+      padding:4px 10px; border-radius:999px;
+      background: rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.25);
+      color:#fff;
+    }
+    .card{
+      width:100%; max-width:980px;
+      background: rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:14px; padding:16px;
+    }
+    pre{
+      width:100%; max-width:980px; min-height:110px;
+      background: rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:10px; padding:10px; white-space:pre-wrap; color:#fff;
+    }
+
+    /* D-pad */
+    .pad-wrap{
+      display:grid;
+      grid-template-areas:
+        ".    up    ."
+        "left stop right"
+        ".   down   .";
+      gap:22px; place-items:center; margin-top:10px;
+    }
+
+    /* Buttons */
+    .btn{
+      background: rgba(0,0,0,.75);
+      border:2px solid #000; color:#fff;
+      border-radius:12px; padding:18px 28px;
+      font-size:20px; font-weight:700; cursor:pointer; user-select:none;
+      min-width:150px; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,.6);
+    }
+    .btn.small{ padding:10px 14px; font-size:14px; min-width:auto }
+    .btn:disabled{ opacity:.5; cursor:not-allowed }
+    .btn-up   { grid-area: up; }
+    .btn-down { grid-area: down; }
+    .btn-left { grid-area: left; }
+    .btn-right{ grid-area: right; }
+    .btn-stop{
+      grid-area: stop; border-radius:999px; min-width:0; width:120px; height:120px; padding:0;
+      display:grid; place-items:center; font-size:18px; font-weight:700;
+      background: rgba(0,0,0,.75); color:#fff; border:2px solid #000;
+    }
+
+    .slider-row{ display:flex; gap:12px; align-items:center }
+    input[type=range]{ width:100%; accent-color:#e91e63 }
+    #pwmVal{ min-width:36px; text-align:right }
+
+    /* Inputs */
+    .input{
+      padding:8px 10px; border-radius:8px;
+      border:1px solid rgba(255,255,255,.25);
+      background: rgba(0,0,0,.55); color:#fff; outline:none;
+    }
+
+    /* BIG Wi-Fi checkbox + nicer label */
+    #wifiMode{ transform: scale(1.6); accent-color:#34c759; } /* turns green when checked */
+    label[for="wifiMode"]{ font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,.6); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="row">
+      <span class="status" id="status">Idle</span>
+      <span id="mode">Mode: BLE</span>
+      <span id="dev"></span>
+    </div>
+    <div class="row">
+      <!-- Wi-Fi controls -->
+      <input class="input" id="ip" placeholder="ESP IP (e.g. 192.168.1.42)">
+      <input type="checkbox" id="wifiMode" />
+      <label for="wifiMode">Wi-Fi mode</label>
+
+      <!-- BLE controls -->
+      <button class="btn small" id="btnConnect">Connect</button>
+      <button class="btn small" id="btnDisconnect" disabled>Disconnect</button>
+    </div>
+  </div>
+
+  <!-- D-pad -->
+  <div class="pad-wrap">
+    <button class="btn btn-up"    id="btnForward"  disabled>Forward</button>
+    <button class="btn btn-left"  id="btnLeft"     disabled>Left</button>
+    <button class="btn btn-right" id="btnRight"    disabled>Right</button>
+    <button class="btn btn-down"  id="btnBackward" disabled>Backward</button>
+    <button class="btn btn-stop"  id="btnStop"     disabled>Stop</button>
+  </div>
+
+  <!-- PWM slider -->
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:8px">PWM slider (base speed)</div>
+    <div class="slider-row">
+      <input type="range" id="pwm" min="0" max="255" value="150" disabled>
+      <span id="pwmVal">150</span>
+      <button class="btn small" id="btnApplyPwm" disabled>Set</button>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:8px">Logs</div>
+    <pre id="log"></pre>
+  </div>
+
+<script>
+/* Nordic UART UUIDs */
+const svc = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const rx  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const tx  = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+let device, server, service, rxChar, txChar;
+
+const $  = sel => document.querySelector(sel);
+const log = m => { $("#log").textContent = `${new Date().toLocaleTimeString()}  ${m}\n` + $("#log").textContent; };
+const setStatus = s => $("#status").textContent = s;
+
+/* Enable UI + show mode pill */
+function updateEnabled() {
+  const wifi = $("#wifiMode").checked;
+  const bleConnected = !!(txChar && device?.gatt?.connected);
+  const enable = wifi || bleConnected;
+
+  $("#btnDisconnect").disabled = !bleConnected;
+  ["btnForward","btnBackward","btnLeft","btnRight","btnStop","pwm","btnApplyPwm"]
+    .forEach(id => document.getElementById(id).disabled = !enable);
+
+  $("#mode").textContent = wifi ? "Mode: Wi-Fi" : "Mode: BLE";
+}
+$("#wifiMode").onchange = updateEnabled;
+
+async function connect(){
+  try{
+    setStatus("Scanning...");
+    device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [svc]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    $("#dev").textContent = device.name || "";
+
+    setStatus("Connecting...");
+    server = await device.gatt.connect();
+    service = await server.getPrimaryService(svc);
+    rxChar  = await service.getCharacteristic(rx);
+    txChar  = await service.getCharacteristic(tx);
+
+    await txChar.startNotifications();
+    txChar.addEventListener('characteristicvaluechanged', e=>{
+      const v = new TextDecoder().decode(e.target.value);
+      log("ESP32 → " + v.trim());
+    });
+
+    setStatus("Ready");
+    log("BLE connected");
+    updateEnabled();
+  }catch(err){
+    log("ERR: " + err);
+    setStatus("Idle");
+  }
+}
+
+function onDisconnect(){
+  setStatus("Idle");
+  log("BLE disconnected");
+  txChar = null; rxChar = null;
+  updateEnabled();
+}
+
+function disconnect(){
+  if(device?.gatt?.connected) device.gatt.disconnect();
+}
+
+async function send(text){
+  const wifi = $("#wifiMode").checked;
+  if (wifi) {
+    const ip = $("#ip").value.trim();
+    if (!ip) { log("ERR: Enter ESP IP first"); return; }
+    try {
+      const r = await fetch(`http://${ip}/cmd?c=${encodeURIComponent(text)}`);
+      const t = await r.text();
+      log("HTTP → " + text);
+      log("ESP32 ← " + t);
+    } catch(e) {
+      log("ERR HTTP: " + e);
+    }
+    return;
+  }
+
+  // BLE path
+  if(!rxChar) { log("ERR: Not connected over BLE"); return; }
+  await rxChar.writeValue(new TextEncoder().encode(text));
+  log("BLE → " + text);
+}
+
+/* Buttons */
+$("#btnConnect").onclick = connect;
+$("#btnDisconnect").onclick = disconnect;
+$("#btnForward").onclick  = ()=> send("FORWARD");
+$("#btnBackward").onclick = ()=> send("BACKWARD");
+$("#btnLeft").onclick     = ()=> send("LEFT");
+$("#btnRight").onclick    = ()=> send("RIGHT");
+$("#btnStop").onclick     = ()=> send("STOP");
+
+/* Slider → base speed */
+$("#pwm").oninput = ()=> $("#pwmVal").textContent = $("#pwm").value;
+$("#btnApplyPwm").onclick = ()=> send("PWM " + $("#pwm").value);
+
+/* Initial state */
+updateEnabled();
+</script>
+</body>
+</html>
