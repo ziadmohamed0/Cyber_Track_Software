@@ -1,0 +1,105 @@
+/*
+ * tim.cpp
+ *
+ *  Created on: Sep 5, 2025
+ *      Author: ziad
+ */
+
+#include "tim.h"
+
+timer::timer(TIM_TypeDef* tim, uint32_t prescaler, uint32_t arr, timer_callback_t cb)
+    : rcc(rcc_clock_src::HSE), instance(tim), callback(cb) {
+    // Enable clock
+    if (this->instance == TIM1) {
+		this->enable_peripheral_clock(periphrales_bus::APB2, clock_timer_1);
+    }
+    if (this->instance == TIM2) {
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_2);
+    }
+    if (this->instance == TIM3) {
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_3);
+    }
+    if (this->instance == TIM4) {
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_4);
+    }
+
+    // Basic config
+    instance->PSC = prescaler;
+    instance->ARR = arr;
+    instance->DIER |= TIM_DIER_UIE;  // Enable update interrupt
+}
+
+void timer::start() {
+    instance->CR1 |= TIM_CR1_CEN;
+}
+
+void timer::stop() {
+    instance->CR1 &= ~TIM_CR1_CEN;
+}
+
+void timer::handler() {
+    if (instance->SR & TIM_SR_UIF) {
+        instance->SR &= ~TIM_SR_UIF; // clear flag
+        if (callback) callback();
+    }
+}
+
+
+
+void timer::pwm_init(uint8_t channel) {
+    // Enable PWM mode on given channel
+    switch(channel) {
+    case 1:
+        instance->CCMR1 &= ~(TIM_CCMR1_OC1M);
+        instance->CCMR1 |= (6 << TIM_CCMR1_OC1M_Pos); // PWM mode 1
+        instance->CCMR1 |= TIM_CCMR1_OC1PE;           // Preload enable
+        instance->CCER  |= TIM_CCER_CC1E;             // Enable channel
+        break;
+
+    case 2:
+        instance->CCMR1 &= ~(TIM_CCMR1_OC2M);
+        instance->CCMR1 |= (6 << TIM_CCMR1_OC2M_Pos);
+        instance->CCMR1 |= TIM_CCMR1_OC2PE;
+        instance->CCER  |= TIM_CCER_CC2E;
+        break;
+
+    case 3:
+        instance->CCMR2 &= ~(TIM_CCMR2_OC3M);
+        instance->CCMR2 |= (6 << TIM_CCMR2_OC3M_Pos);
+        instance->CCMR2 |= TIM_CCMR2_OC3PE;
+        instance->CCER  |= TIM_CCER_CC3E;
+        break;
+
+    case 4:
+        instance->CCMR2 &= ~(TIM_CCMR2_OC4M);
+        instance->CCMR2 |= (6 << TIM_CCMR2_OC4M_Pos);
+        instance->CCMR2 |= TIM_CCMR2_OC4PE;
+        instance->CCER  |= TIM_CCER_CC4E;
+        break;
+    }
+
+    instance->CR1 |= TIM_CR1_ARPE;   // Auto-reload preload
+    instance->EGR |= TIM_EGR_UG;     // Update registers
+    instance->CR1 |= TIM_CR1_CEN;    // Enable timer
+}
+
+void timer::pwm_set_duty(uint8_t channel, uint32_t duty) {
+    uint32_t arr = instance->ARR;
+    uint32_t ccr = (duty * arr) / 100; // duty in %
+    switch(channel) {
+    case 1: instance->CCR1 = ccr; break;
+    case 2: instance->CCR2 = ccr; break;
+    case 3: instance->CCR3 = ccr; break;
+    case 4: instance->CCR4 = ccr; break;
+    }
+}
+
+void timer::pwm_stop(uint8_t channel) {
+    switch(channel) {
+    case 1: instance->CCER &= ~TIM_CCER_CC1E; break;
+    case 2: instance->CCER &= ~TIM_CCER_CC2E; break;
+    case 3: instance->CCER &= ~TIM_CCER_CC3E; break;
+    case 4: instance->CCER &= ~TIM_CCER_CC4E; break;
+    }
+}
+

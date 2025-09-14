@@ -1,0 +1,33 @@
+/*
+ * exti.h
+ *
+ *  Created on: Sep 4, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_MCAL_EXTI_EXTI_H_
+#define CUSTOM_DRIVER_MCAL_EXTI_EXTI_H_
+
+#include "../gpio/gpio.h"
+
+enum class exti_trigger {
+    RISING,
+    FALLING,
+    BOTH
+};
+
+typedef void (*exti_callback_t)(uint8_t pin);
+
+class external_interrupt {
+public:
+    external_interrupt(GPIO_PORT port, uint8_t pin, exti_trigger trigger, exti_callback_t cb);
+    void enable();
+    void disable();
+    void handler();
+
+private:
+    uint8_t line;
+    exti_callback_t callback;
+};
+
+#endif /* CUSTOM_DRIVER_MCAL_EXTI_EXTI_H_ */

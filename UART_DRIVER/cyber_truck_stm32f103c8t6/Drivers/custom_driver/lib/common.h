@@ -1,0 +1,54 @@
+/*
+ * bit_math.h
+ *
+ *  Created on: Sep 3, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_LIB_COMMON_H_
+#define CUSTOM_DRIVER_LIB_COMMON_H_
+
+#include <stdint.h>
+#include <stdio.h>
+#include "main.h"
+#include "stm32f103xb.h"
+
+namespace delay {
+	static inline void ms(volatile uint32_t ms) {
+		for(uint32_t i = 0; i < ms * 8000; i++) {
+			__asm__("nop");
+		}
+	}
+
+	static inline void us(volatile uint32_t us) {
+		for(uint32_t i = 0; i < us * 8; i++) {
+			__asm__("nop");
+		}
+	}
+}
+
+namespace bit_math {
+	template<typename T>
+	inline void clear_bit(volatile T &reg, uint32_t bit) {
+		reg &= ~(static_cast<T>(1) << bit);
+	}
+
+	template<typename T>
+	inline void set_bit(volatile T &reg, uint32_t bit) {
+		reg |= (static_cast<T>(1) << bit);
+	}
+
+	template<typename T>
+	inline void toggle_bit(volatile T &reg, uint32_t bit) {
+		reg ^= (static_cast<T>(1) << bit);
+	}
+
+	template<typename T>
+	inline bool get_bit(volatile T &reg, uint32_t bit) {
+		return (reg >> bit) & static_cast<T>(1);
+	}
+
+}
+
+
+#endif /* CUSTOM_DRIVER_LIB_COMMON_H_ */

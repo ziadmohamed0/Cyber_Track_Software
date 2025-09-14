@@ -1,0 +1,28 @@
+/*
+ * tim.h
+ *
+ *  Created on: Sep 5, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_MCAL_TIM_TIM_H_
+#define CUSTOM_DRIVER_MCAL_TIM_TIM_H_
+
+#include "../../lib/common.h"
+
+typedef void(*timer_callback_t)(void);
+
+class timer {
+public:
+    timer(TIM_TypeDef* tim, uint32_t prescaler, uint32_t arr, timer_callback_t cb);
+    void start();
+    void stop();
+    void handler();
+private:
+    TIM_TypeDef* instance;
+    timer_callback_t callback;
+};
+
+extern timer* timer_objects[4];
+
+#endif /* CUSTOM_DRIVER_MCAL_TIM_TIM_H_ */

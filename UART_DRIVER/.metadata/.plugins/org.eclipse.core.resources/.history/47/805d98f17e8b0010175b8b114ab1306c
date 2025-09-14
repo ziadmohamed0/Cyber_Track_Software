@@ -1,0 +1,69 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+
+ultrasonic* global_ultrasonic = nullptr;
+
+// Callback function for echo pin interrupt
+void echo_callback(uint8_t pin) {
+    if (global_ultrasonic) {
+        global_ultrasonic->echo_handler(pin);
+    }
+}
+
+// Timer callback for periodic measurements
+void measurement_timer_callback() {
+    if (global_ultrasonic) {
+        global_ultrasonic->trigger();
+    }
+}
+
+int main(void) {
+    // System Clock Configuration (assuming 72MHz)
+    // Initialize UART1 (PA9=TX, PA10=RX)
+    USART uart(USART1Instance);
+
+    // Initialize Timer2 for ultrasonic timing (1µs resolution)
+    timer measurement_timer(TIM2, 71, 0xFFFF, measurement_timer_callback); // 72MHz/72=1MHz
+
+    // Initialize ultrasonic sensor
+    // TRIG on PA0, ECHO on PA1, using TIM3 for timing
+    ultrasonic us_sensor(GPIO_PORT::A, 0, GPIO_PORT::PORTA, 1, TIM3);
+    global_ultrasonic = &us_sensor;
+
+    // Initialize components
+    us_sensor.init();
+
+    // Enable NVIC for timer interrupt
+    NVIC_EnableIRQ(TIM2_IRQn);
+
+    // Set measurement interval (every 100ms)
+    measurement_timer.start();
+    TIM2->ARR = 99999; // 100ms at 1MHz (100000-1)
+
+    uart.sendString("Ultrasonic Distance Sensor Ready\r\n");
+
+    while (1) {
+        // Check if measurement is complete and send via UART
+        float distance = us_sensor.get_distance_cm();
+
+        if (distance > 0.0f && distance < 400.0f) { // Valid range check
+            // Convert float to string manually (simple method)
+            uint32_t whole = (uint32_t)distance;
+            uint32_t decimal = (uint32_t)((distance - whole) * 100);
+
+            char buffer[50];
+            sprintf(buffer, "Distance: %lu.%02lu cm\r\n", whole, decimal);
+            uart.sendString(buffer);
+        }
+
+        // Small delay to avoid flooding UART
+        for (volatile int i = 0; i < 720000; i++); // ~100ms delay
+    }
+}

@@ -1,0 +1,166 @@
+#include "stm32f1xx_hal.h"
+#include <stdio.h>
+
+/* Define pins */
+#define TRIG_PIN    GPIO_PIN_1
+#define TRIG_PORT   GPIOA
+#define ECHO_PIN    GPIO_PIN_2
+#define ECHO_PORT   GPIOA
+
+UART_HandleTypeDef huart1;
+TIM_HandleTypeDef htim2;
+
+/* Prototypes */
+void SystemClock_Config(void);
+void GPIO_Init(void);
+void USART1_Init(void);
+void TIM2_Init(void);
+void delay_us(uint16_t us);
+
+uint32_t ic_val1 = 0;
+uint32_t ic_val2 = 0;
+uint8_t is_first_captured = 0;
+uint32_t difference = 0;
+float distance = 0;
+char buffer[64];
+
+int main(void)
+{
+  HAL_Init();
+  SystemClock_Config();
+
+  GPIO_Init();
+  USART1_Init();
+  TIM2_Init();
+
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
+
+  while (1)
+  {
+    // Send trigger
+    HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);
+    delay_us(10);
+    HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);
+
+    HAL_Delay(100);
+
+    int len = sprintf(buffer, "Distance: %d cm\r\n", (int)distance);
+    HAL_UART_Transmit(&huart1, (uint8_t*)buffer, len, HAL_MAX_DELAY);
+  }
+}
+
+void delay_us(uint16_t us)
+{
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  while (__HAL_TIM_GET_COUNTER(&htim2) < us);
+}
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+  {
+    if (is_first_captured == 0)
+    {
+      ic_val1 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+      is_first_captured = 1;
+      __HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
+    }
+    else
+    {
+      ic_val2 = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+
+      if (ic_val2 > ic_val1)
+        difference = ic_val2 - ic_val1;
+      else
+        difference = (0xFFFF - ic_val1) + ic_val2;
+
+      distance = (float)difference * 0.0343f / 2.0f;
+
+      is_first_captured = 0;
+      __HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
+    }
+  }
+}
+
+/* ===================== Init Functions ===================== */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  HAL_RCC_OscConfig(&RCC_OscInitStruct);
+
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
+}
+
+void GPIO_Init(void)
+{
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  // TRIG as output
+  GPIO_InitStruct.Pin = TRIG_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TRIG_PORT, &GPIO_InitStruct);
+
+  // ECHO as input (Alternate function TIM2_CH1)
+  GPIO_InitStruct.Pin = ECHO_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_INPUT;
+  HAL_GPIO_Init(ECHO_PORT, &GPIO_InitStruct);
+}
+
+void USART1_Init(void)
+{
+  __HAL_RCC_USART1_CLK_ENABLE();
+
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart1);
+}
+
+void TIM2_Init(void)
+{
+  __HAL_RCC_TIM2_CLK_ENABLE();
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 72-1;     // 1 MHz => 1 tick = 1 us (if 72 MHz SYSCLK)
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 0xFFFF;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_IC_Init(&htim2);
+
+  TIM_IC_InitTypeDef sConfigIC = {0};
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_1);
+
+  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM2_IRQn);
+}
+
+void TIM2_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(&htim2);
+}

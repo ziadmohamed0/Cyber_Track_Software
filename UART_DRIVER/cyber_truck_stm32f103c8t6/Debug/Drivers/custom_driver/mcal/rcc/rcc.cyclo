@@ -1,0 +1,3 @@
+rcc.cpp:9:1:rcc::rcc(rcc_clock_src)	5
+rcc.cpp:26:6:void rcc::enable_peripheral_clock(periphrales_bus, uint32_t)	5
+common.h:37:14:void bit_math::set_bit(volatile T&, uint32_t) [with T = long unsigned int]	1

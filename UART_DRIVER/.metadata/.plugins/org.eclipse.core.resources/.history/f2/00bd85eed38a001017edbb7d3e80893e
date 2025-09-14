@@ -1,0 +1,37 @@
+/*
+ * dc_motor.h
+ *
+ *  Created on: Sep 4, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_
+#define CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_
+
+#include "../../mcal/mcal_dfs.h"
+
+enum class motor_direction {
+	forward, reverse, stop
+};
+
+struct motor_cfg_t {
+	GPIO_PORT port;
+	uint8_t pins[2];
+};
+
+class DC_MOTOR {
+public:
+	DC_MOTOR(motor_cfg_t* cfg);
+	void move(motor_direction copy_direction);
+	void forward();
+	void reverse();
+	void stop();
+private:
+	motor_cfg_t* m_cfg;
+	gpio pin1;
+	gpio pin2;
+};
+
+
+
+#endif /* CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_ */

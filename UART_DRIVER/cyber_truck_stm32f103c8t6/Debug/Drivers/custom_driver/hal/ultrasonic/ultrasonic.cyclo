@@ -1,0 +1,6 @@
+ultrasonic.cpp:13:1:ultrasonic::ultrasonic(GPIO_PORT, uint8_t, GPIO_PORT, uint8_t, TIM_TypeDef*)	1
+ultrasonic.cpp:30:6:void ultrasonic::init()	5
+ultrasonic.cpp:43:6:void ultrasonic::trigger()	2
+ultrasonic.cpp:56:6:void ultrasonic::echo_handler(uint8_t)	11
+ultrasonic.cpp:92:7:float ultrasonic::get_distance_cm()	1
+ultrasonic.cpp:96:6:bool ultrasonic::is_measurement_ready()	1

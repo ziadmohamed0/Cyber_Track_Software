@@ -1,0 +1,149 @@
+#include "stm32f1xx_hal.h"
+#include <stdio.h>
+
+/* Define pins */
+#define TRIG_PIN    GPIO_PIN_1
+#define TRIG_PORT   GPIOA
+#define ECHO_PIN    GPIO_PIN_2
+#define ECHO_PORT   GPIOA
+
+UART_HandleTypeDef huart1;
+TIM_HandleTypeDef htim2;
+
+/* Prototypes */
+void SystemClock_Config(void);
+void GPIO_Init(void);
+void USART1_Init(void);
+void TIM2_Init(void);
+void delay_us(uint16_t us);
+float Ultrasonic_Read(void);
+
+char buffer[64];
+
+int main(void)
+{
+  HAL_Init();
+  SystemClock_Config();
+
+  GPIO_Init();
+  USART1_Init();
+  TIM2_Init();
+
+  while (1)
+  {
+    float distance = Ultrasonic_Read();
+
+    int len = sprintf(buffer, "Distance: %d cm\r\n", (int)distance);
+    HAL_UART_Transmit(&huart1, (uint8_t*)buffer, len, HAL_MAX_DELAY);
+
+    HAL_Delay(500);
+  }
+}
+
+/* Delay us using TIM2 */
+void delay_us(uint16_t us)
+{
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  HAL_TIM_Base_Start(&htim2);
+  while (__HAL_TIM_GET_COUNTER(&htim2) < us);
+  HAL_TIM_Base_Stop(&htim2);
+}
+
+/* Ultrasonic read function (polling mode) */
+float Ultrasonic_Read(void)
+{
+  uint32_t start = 0, stop = 0;
+
+  // Trigger 10us pulse
+  HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);
+  delay_us(10);
+  HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);
+
+  // Wait for ECHO to go high
+  while (HAL_GPIO_ReadPin(ECHO_PORT, ECHO_PIN) == GPIO_PIN_RESET);
+
+  // Start timer
+  __HAL_TIM_SET_COUNTER(&htim2, 0);
+  HAL_TIM_Base_Start(&htim2);
+
+  // Wait for ECHO to go low
+  while (HAL_GPIO_ReadPin(ECHO_PORT, ECHO_PIN) == GPIO_PIN_SET);
+
+  // Stop timer
+  stop = __HAL_TIM_GET_COUNTER(&htim2);
+  HAL_TIM_Base_Stop(&htim2);
+
+  // Convert time to distance (speed of sound 343 m/s)
+  float distance = (float)stop * 0.0343f / 2.0f;
+
+  return distance;
+}
+
+/* ===================== Init Functions ===================== */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  HAL_RCC_OscConfig(&RCC_OscInitStruct);
+
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
+}
+
+void GPIO_Init(void)
+{
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  // TRIG as output
+  GPIO_InitStruct.Pin = TRIG_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TRIG_PORT, &GPIO_InitStruct);
+
+  // ECHO as input
+  GPIO_InitStruct.Pin = ECHO_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ECHO_PORT, &GPIO_InitStruct);
+}
+
+void USART1_Init(void)
+{
+  __HAL_RCC_USART1_CLK_ENABLE();
+
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  HAL_UART_Init(&huart1);
+}
+
+void TIM2_Init(void)
+{
+  __HAL_RCC_TIM2_CLK_ENABLE();
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 72-1;     // 1 MHz => 1 tick = 1 us (if 72 MHz SYSCLK)
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 0xFFFF;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  HAL_TIM_Base_Init(&htim2);
+}

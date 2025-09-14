@@ -1,0 +1,49 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+#include <stdio.h>
+
+USART usart1(USART1Instance);
+ultrasonic usonic(GPIO_PORT::A, 1,   // TRIG على PA1
+                  GPIO_PORT::A, 2,   // ECHO على PA2
+                  TIM2);             // تايمر 2 للعد
+
+int main (int argc, char* argv[]) {
+	SystemInit();
+    usart1.Usart1Initialize();
+    usonic.init();
+
+	while(true) {
+        // Trigger ultrasonic
+        usonic.trigger();
+
+        // delay بسيط عشان ندي فرصة للقياس
+        for (volatile int i=0; i<720000; i++); // ≈ 10ms
+        // Read distance
+        float distance = usonic.get_distance_cm();
+        // Convert to string
+        char buffer[32];
+        int len = sprintf(buffer, "Distance: %.2f cm\r\n", distance);
+        // Send over UART
+        usart1.sendString(buffer);
+        // Delay 500ms
+        delay::ms(500);
+	}
+	return 0;
+}

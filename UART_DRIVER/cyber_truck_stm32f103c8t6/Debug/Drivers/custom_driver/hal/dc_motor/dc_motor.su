@@ -1,0 +1,9 @@
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:12:1:DC_MOTOR::DC_MOTOR(motor_cfg_t*)	32	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:25:6:void DC_MOTOR::move(motor_direction)	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:46:6:void DC_MOTOR::set_speed(uint32_t)	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:50:6:void DC_MOTOR::stop()	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:55:9:int32_t DC_MOTOR::get_position()	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:59:6:void DC_MOTOR::reset_position()	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:65:6:static void DC_MOTOR::encoder_callback(uint8_t)	16	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:74:6:void DC_MOTOR::handle_encoderA()	48	static
+../Drivers/custom_driver/hal/dc_motor/dc_motor.cpp:82:6:void DC_MOTOR::handle_encoderB()	48	static

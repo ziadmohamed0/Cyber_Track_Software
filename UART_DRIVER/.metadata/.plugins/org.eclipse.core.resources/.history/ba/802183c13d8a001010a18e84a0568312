@@ -1,0 +1,24 @@
+/*
+ * isr_bridge.cpp
+ *
+ *  Created on: Sep 4, 2025
+ *      Author: ziad
+ */
+
+#include "mcal_dfs.h"
+
+/* external interrupt */
+external_interrupt* exti_objects[16] = {nullptr};
+extern "C" void EXTI0_IRQHandler(void)      { if (exti_objects[0]) exti_objects[0]->handler(); }
+extern "C" void EXTI1_IRQHandler(void)      { if (exti_objects[1]) exti_objects[1]->handler(); }
+extern "C" void EXTI2_IRQHandler(void)      { if (exti_objects[2]) exti_objects[2]->handler(); }
+extern "C" void EXTI3_IRQHandler(void)      { if (exti_objects[3]) exti_objects[3]->handler(); }
+extern "C" void EXTI4_IRQHandler(void)      { if (exti_objects[4]) exti_objects[4]->handler(); }
+extern "C" void EXTI9_5_IRQHandler(void)    { for (int i=5;  i<=9;  ++i)  if (exti_objects[i]) exti_objects[i]->handler(); }
+extern "C" void EXTI15_10_IRQHandler(void)  { for (int i=10; i<=15; ++i) if (exti_objects[i]) exti_objects[i]->handler(); }
+
+/* timers interrupt */
+extern timer* timer_objects[4];
+extern "C" void TIM2_IRQHandler(void) { if (timer_objects[0]) timer_objects[0]->handler(); }
+extern "C" void TIM3_IRQHandler(void) { if (timer_objects[1]) timer_objects[1]->handler(); }
+extern "C" void TIM4_IRQHandler(void) { if (timer_objects[2]) timer_objects[2]->handler(); }

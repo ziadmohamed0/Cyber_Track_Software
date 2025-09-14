@@ -1,0 +1,46 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+#include <stdio.h>
+
+USART usart1(USART1Instance);
+ultrasonic usonic(GPIO_PORT::A, 1,   // TRIG -> PA1
+                  GPIO_PORT::A, 2,   // ECHO -> PA2
+                  TIM2);             // Timer 2
+
+int main (int argc, char* argv[]) {
+    SystemInit();
+    usart1.Usart1Initialize();
+    usonic.init();
+
+    while (true) {
+        // Test message
+        usart1.sendString((char*)"Hello UART\r\n");
+
+        // Trigger ultrasonic
+        usonic.trigger();
+
+        // Small delay to allow measurement
+        delay::ms(10);
+
+        // Read distance
+        float distance = usonic.get_distance_cm();
+
+        // Convert distance to string
+        char buffer[64];
+        sprintf(buffer, "Distance: %.2f cm\r\n", distance);
+
+        // Send over UART
+        usart1.sendString(buffer);
+
+        // Delay 500ms
+        delay::ms(500);
+    }
+    return 0;
+}

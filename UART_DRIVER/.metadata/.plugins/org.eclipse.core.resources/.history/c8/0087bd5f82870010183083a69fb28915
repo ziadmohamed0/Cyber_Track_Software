@@ -1,0 +1,53 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+//#include "main.h"
+//#include "stm32f103xb.h"
+
+#include "mcal/uart.h"
+#include "mcal/ultrasonic.h"
+
+int main(void) {
+//	USART *ble = new(USART1Instance) USART(USART1Instance);
+//
+//	RCC->APB2ENR |= (1<<4); // Enable GPIOC clock
+//	GPIOC->CRH = (3<<20);   // PC13 output
+//	GPIOC->CRH |= (3<<24);  // PC14 output
+//
+//	ble->sendStringInterrupt("System Ready with Interrupts!\r\n");
+    ultrasonicSensor = new ULTRASONIC(TIM2Instance, GPIOA, 8, GPIOA, 9);
+
+	while (1) {
+//		ble->sendString("hi al3b try\n");
+//		HAL_Delay(1000);
+		float distance = ultrasonicSensor->measureDistanceBlocking();
+        if (distance > 0) {
+            printf("Distance: %.2f cm\n", distance);
+        }
+
+        // Or async measurement
+        ultrasonicSensor->measureDistanceAsync();
+        if (ultrasonicSensor->dataAvailable()) {
+            float asyncDistance;
+            if (ultrasonicSensor->readDistance(&asyncDistance)) {
+                printf("Async Distance: %.2f cm\n", asyncDistance);
+            }
+        }
+
+        HAL_Delay(100);
+    }
+}

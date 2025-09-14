@@ -1,0 +1,17 @@
+03:19:36 **** Incremental Build of configuration Debug for project cyber_truck_stm32f103c8t6 ****
+make -j4 all 
+arm-none-eabi-g++ "../Core/Src/main.cpp" -mcpu=cortex-m3 -std=gnu++14 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -fno-use-cxa-atexit -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
+arm-none-eabi-g++ -o "cyber_truck_stm32f103c8t6.elf" @"objects.list"   -mcpu=cortex-m3 -T"/home/ziad/Ziad_WS/Cyber_Track_Software/UART_DRIVER/cyber_truck_stm32f103c8t6/STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="cyber_truck_stm32f103c8t6.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+Finished building target: cyber_truck_stm32f103c8t6.elf
+ 
+arm-none-eabi-size   cyber_truck_stm32f103c8t6.elf 
+arm-none-eabi-objdump -h -S  cyber_truck_stm32f103c8t6.elf  > "cyber_truck_stm32f103c8t6.list"
+   text	   data	    bss	    dec	    hex	filename
+   1540	     12	   2172	   3724	    e8c	cyber_truck_stm32f103c8t6.elf
+Finished building: default.size.stdout
+ 
+Finished building: cyber_truck_stm32f103c8t6.list
+ 
+
+03:19:37 Build Finished. 0 errors, 0 warnings. (took 1s.39ms)
+

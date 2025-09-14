@@ -1,0 +1,60 @@
+/*
+ * exti.cpp
+ *
+ *  Created on: Sep 4, 2025
+ *      Author: ziad
+ */
+
+#include "exti.h"
+
+external_interrupt::external_interrupt(GPIO_PORT port, uint8_t pin, exti_trigger trigger, exti_callback_t cb) {
+    line = pin;
+    callback = cb;
+
+    // enable AFIO clock
+    bit_math::set_bit(RCC->APB2ENR, 0);
+
+    // map port to EXTI line
+    uint8_t index = line / 4;
+    uint8_t pos   = (line % 4) * 4;
+    AFIO->EXTICR[index] &= ~(0xF << pos);
+    AFIO->EXTICR[index] |= (static_cast<uint32_t>(port) << pos);
+
+    // set trigger
+    switch (trigger) {
+        case exti_trigger::RISING:
+            bit_math::set_bit(EXTI->RTSR, line);
+            bit_math::clear_bit(EXTI->FTSR, line);
+            break;
+        case exti_trigger::FALLING:
+            bit_math::set_bit(EXTI->FTSR, line);
+            bit_math::clear_bit(EXTI->RTSR, line);
+            break;
+        case exti_trigger::BOTH:
+            bit_math::set_bit(EXTI->RTSR, line);
+            bit_math::set_bit(EXTI->FTSR, line);
+            break;
+    }
+
+    // unmask
+    bit_math::set_bit(EXTI->IMR, line);
+
+    // enable NVIC
+    if (line <= 4) {
+        NVIC_EnableIRQ((IRQn_Type)(EXTI0_IRQn + line));
+    } else if (line <= 9) {
+        NVIC_EnableIRQ(EXTI9_5_IRQn);
+    } else {
+        NVIC_EnableIRQ(EXTI15_10_IRQn);
+    }
+}
+
+void external_interrupt::enable()  { bit_math::set_bit(EXTI->IMR, line); }
+void external_interrupt::disable() { bit_math::clear_bit(EXTI->IMR, line); }
+
+void external_interrupt::handler() {
+    if (bit_math::get_bit(EXTI->PR, line)) {
+        bit_math::set_bit(EXTI->PR, line); // clear pending
+        if (callback) callback();
+    }
+}

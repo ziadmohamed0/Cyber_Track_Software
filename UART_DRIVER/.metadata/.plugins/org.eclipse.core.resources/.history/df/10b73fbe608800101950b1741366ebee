@@ -1,0 +1,51 @@
+/*
+ * gpio.h
+ *
+ *  Created on: Sep 3, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_
+#define CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_
+
+#include "../../lib/bit_math.h"
+#include  "../mcal_dfs.h"
+
+enum class GPIO_PORT {
+	A, B, C
+};
+
+enum class GPIO_STATUS {
+    INPUT = 0b00,
+    OUTPUT_10MHz = 0b01,
+    OUTPUT_2MHz = 0b10,
+    OUTPUT_50MHz = 0b11
+};
+
+enum class GPIO_CONFIG {
+    // Input
+    ANALOG = 0b00,
+    FLOATING = 0b01,
+    PULL_UP_DOWN = 0b10,
+
+    // Output
+    GP_PUSH_PULL = 0b00,
+    GP_OPEN_DRAIN = 0b01,
+    AF_PUSH_PULL = 0b10,
+    AF_OPEN_DRAIN = 0b11
+};
+
+class gpio  : public rcc {
+public:
+	gpio(PORT port,uint32_t pin, STATUS dir);
+	void set();
+	void clear();
+	uint32_t get();
+private:
+	STATUS direction;
+	PORT port_index;
+	uint32_t pin_index;
+};
+
+
+#endif /* CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_ */

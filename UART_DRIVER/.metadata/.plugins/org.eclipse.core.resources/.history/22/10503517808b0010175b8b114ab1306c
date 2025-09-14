@@ -1,0 +1,90 @@
+/*
+ * ultrasonic.cpp
+ *
+ *  Created on: Sep 6, 2025
+ *      Author: ziad
+ */
+
+#include "ultrasonic.h"
+
+// External callback function pointer
+echo_callback_t echo_callback;
+
+ultrasonic::ultrasonic(GPIO_PORT trig_port, uint8_t trig_pin,
+                       GPIO_PORT echo_port, uint8_t echo_pin,
+                       TIM_TypeDef* tim)
+    : trig(trig_port, trig_pin, GPIO_STATUS::OUTPUT_50MHz, GPIO_CONFIG::GP_PUSH_PULL),
+      echo(echo_port, echo_pin, GPIO_STATUS::INPUT, GPIO_CONFIG::FLOATING),
+      timer(tim),
+      start_time(0),
+      end_time(0),
+      measuring(false),
+      distance_cm(0.0f),
+      measurement_ready(false),
+      echo_pin_num(echo_pin)
+{
+    // Register external interrupt for echo pin
+    new external_interrupt(echo_port, echo_pin, exti_trigger::BOTH, echo_callback);
+}
+
+void ultrasonic::init() {
+    // Enable timer clock
+    if (timer == TIM1) RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;
+    if (timer == TIM2) RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+    if (timer == TIM3) RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+    if (timer == TIM4) RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
+
+    // Configure timer for microsecond resolution
+    timer->PSC = 71;      // 72MHz / 72 = 1MHz (1µs tick)
+    timer->ARR = 0xFFFF;  // Max count
+    timer->CR1 |= TIM_CR1_CEN; // Enable timer
+}
+
+void ultrasonic::trigger() {
+    measurement_ready = false;
+    measuring = false;
+
+    // Generate 10µs trigger pulse
+    trig.set();
+
+    // 10µs delay (at 72MHz, ~720 cycles ≈ 10µs)
+    for (volatile int i = 0; i < 720; i++);
+
+    trig.clear();
+}
+
+void ultrasonic::echo_handler(uint8_t pin) {
+    if (pin != echo_pin_num) return;
+
+    if (echo.get() == 1 && !measuring) {
+        // Rising edge - start measurement
+        start_time = timer->CNT;
+        measuring = true;
+    }
+    else if (echo.get() == 0 && measuring) {
+        // Falling edge - end measurement
+        end_time = timer->CNT;
+
+        // Calculate time difference (handle overflow)
+        uint32_t time_diff;
+        if (end_time >= start_time) {
+            time_diff = end_time - start_time;
+        } else {
+            time_diff = (0xFFFF - start_time) + end_time + 1;
+        }
+
+        // Calculate distance: time(µs) * 0.0343(cm/µs) / 2
+        distance_cm = (time_diff * 0.0343f) / 2.0f;
+
+        measuring = false;
+        measurement_ready = true;
+    }
+}
+
+float ultrasonic::get_distance_cm() {
+    return distance_cm;
+}
+
+bool ultrasonic::is_measurement_ready() {
+    return measurement_ready;
+}

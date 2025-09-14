@@ -1,0 +1,146 @@
+/*
+ * uart.h
+ *
+ *  Created on: Sep 5, 2023
+ *      Author: MMohamedSaid
+ */
+
+
+#ifndef INC_UART_H_
+#define INC_UART_H_
+
+#include "../../lib/common.h"
+
+#define USART1_BASE_ADDR 	0x40013800
+#define USART2_BASE_ADDR 	0x40004400
+#define USART3_BASE_ADDR 	0x40004800
+#define FOSC       8000000
+#define BAUD 		115200
+
+#define RX_BUFFER_SIZE 256
+#define TX_BUFFER_SIZE 256
+
+enum UsartInstance {
+	USART1Instance = USART1_BASE_ADDR,
+	USART2Instance = USART2_BASE_ADDR,
+	USART3Instance = USART3_BASE_ADDR
+};
+
+enum FrameSize {
+	FrameSizeEight = 0,
+	FrameSizeNine
+};
+
+extern volatile char rxBuffer[RX_BUFFER_SIZE];
+extern volatile char txBuffer[TX_BUFFER_SIZE];
+extern volatile uint16_t rxHead, rxTail;
+extern volatile uint16_t txHead, txTail;
+extern volatile bool txBusy;
+
+class USART {
+public:
+	USART(UsartInstance usart) {
+		usartBase = usart;
+		if(usart == USART1Instance) {
+			Usart1Initialize();
+		}
+		else if(usart == USART2Instance) {
+
+		}
+	}
+
+	void Usart1Initialize() {
+		RCC->APB2ENR = (1<<0) | (1<<2) | (1<<14);
+
+		GPIOA->CRH = (0x0B<<4);
+		GPIOA->CRH |=(4<<8);
+
+		double usart_div = FOSC / (BAUD);
+		USART1->BRR = (uint32_t)usart_div;
+
+		USART1->CR1 = (1<<5) | (1<<7);
+
+		USART1->CR1 |= (1<<2) | (1<<3);
+		USART1->CR1 |= (1<<13); // UE
+
+		NVIC_EnableIRQ(USART1_IRQn);
+
+		rxHead = rxTail = 0;
+		txHead = txTail = 0;
+		txBusy = false;
+	}
+
+	void setFrameSize(FrameSize fsz) {
+		USART1->CR1 |= (static_cast<uint32_t>(fsz) << 12);
+	}
+
+	bool readChar(char* data) {
+		if(rxHead != rxTail) {
+			*data = rxBuffer[rxTail];
+			rxTail = (rxTail + 1) % RX_BUFFER_SIZE;
+			return true;
+		}
+		return false;
+	}
+
+	bool sendCharInterrupt(char data) {
+		uint16_t nextHead = (txHead + 1) % TX_BUFFER_SIZE;
+
+		if(nextHead != txTail) {
+			txBuffer[txHead] = data;
+			txHead = nextHead;
+
+			if(!txBusy) {
+				txBusy = true;
+				USART1->CR1 |= (1<<7);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	bool sendStringInterrupt(const char* str) {
+		while(*str) {
+			if(!sendCharInterrupt(*str))
+				return false;
+			str++;
+		}
+		return true;
+	}
+
+	bool dataAvailable() {
+		return (rxHead != rxTail);
+	}
+
+	bool isTransmissionComplete() {
+		return !txBusy && (txHead == txTail);
+	}
+
+	char read() {
+		while(! (USART1->SR & (1<<5)));
+		return USART1->DR & 0x00FF;
+	}
+
+	void sendChar(char data) {
+		USART1->DR = data & 0xFF;
+		while(!(USART1->SR & (1<<7)));
+	}
+
+	void sendString(char *str) {
+		int i =0;
+		while(str[i] != '\0') {
+			sendChar(str[i++]);
+		}
+	}
+
+	void* operator new(size_t, UsartInstance usart) {
+		return reinterpret_cast<void*>(usart);
+	}
+
+private:
+	UsartInstance usartBase;
+};
+
+extern "C" void USART1_IRQHandler(void);
+
+#endif /* INC_UART_H_ */

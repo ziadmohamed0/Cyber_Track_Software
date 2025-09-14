@@ -1,0 +1,18 @@
+/*
+ * gpio.h
+ *
+ *  Created on: Sep 3, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_
+#define CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_
+
+#include "../../lib/bit_math.h"
+
+class GPIO{
+
+};
+
+
+#endif /* CUSTOM_DRIVER_MCAL_GPIO_GPIO_H_ */

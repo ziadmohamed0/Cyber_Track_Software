@@ -1,0 +1,30 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+
+void led_toggle_callback() {
+    // كود بسيط يغير حالة بنه LED
+    GPIOA->ODR ^= (1 << 5); // لو LED على PA5
+}
+
+int main (int argc, char* argv[]) {
+    SystemInit();
+    // Configure GPIOA pin 5 as output (لو LED على الـ Nucleo)
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+    GPIOA->CRL &= ~(0xF << (5 * 4));
+    GPIOA->CRL |=  (0x1 << (5 * 4)); // Output push-pull
+
+    // اعمل تايمر بسيط interrupt كل 1ms
+    timer tim2(TIM2, 72 - 1, 1000 - 1, led_toggle_callback);
+    tim2.start();
+    while (true) {
+
+    }
+    return 0;
+}

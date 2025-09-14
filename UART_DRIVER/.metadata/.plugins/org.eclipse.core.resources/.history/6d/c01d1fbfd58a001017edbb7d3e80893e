@@ -1,0 +1,53 @@
+/*
+ * dc_motor.h
+ *
+ *  Created on: Sep 4, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_
+#define CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_
+
+#include "../../mcal/mcal_dfs.h"
+
+enum class motor_direction {
+	forward, reverse, stop
+};
+
+struct motor_cfg_t {
+	GPIO_PORT port;
+	uint8_t pins[2];
+    TIM_TypeDef* pwm_tim;
+    uint8_t pwm_channel;
+    TIM_TypeDef* enc_tim;
+    uint32_t max_count;
+};
+
+class DC_MOTOR {
+public:
+	DC_MOTOR(motor_cfg_t* cfg);
+	void set_speed(uint16_t duty, motor_direction dir);
+	void move(motor_direction copy_direction);
+    int32_t get_position();
+    int32_t get_speed();
+    void reset_position();
+	void forward();
+	void reverse();
+	void stop();
+private:
+	motor_cfg_t* m_cfg;
+	gpio pin1;
+	gpio pin2;
+    timer pwm;
+    external_interrupt* encA;
+    external_interrupt* encB;
+    volatile int32_t position;
+    static void encoderA_callback();
+    static void encoderB_callback();
+    void handle_encoderA();
+    void handle_encoderB();
+};
+
+
+
+#endif /* CUSTOM_DRIVER_HAL_DC_MOTOR_DC_MOTOR_H_ */

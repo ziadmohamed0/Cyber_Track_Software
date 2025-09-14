@@ -1,0 +1,47 @@
+/*
+ * tim.cpp
+ *
+ *  Created on: Sep 5, 2025
+ *      Author: ziad
+ */
+
+#include "tim.h"
+
+timer::timer(TIM_TypeDef* tim, uint32_t prescaler, uint32_t arr, timer_callback_t cb)
+    : instance(tim), callback(cb), rcc(rcc_clock_src::HSE) {
+    // Enable clock
+	switch(this->instance) {
+	case TIM1:
+		this->enable_peripheral_clock(periphrales_bus::APB2, clock_timer_1);
+		break;
+	case TIM2:
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_2);
+		break;
+	case TIM3:
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_3);
+		break;
+	case TIM4:
+		this->enable_peripheral_clock(periphrales_bus::APB1, clock_timer_4);
+		break;
+	}
+
+    // Basic config
+    instance->PSC = prescaler;
+    instance->ARR = arr;
+    instance->DIER |= TIM_DIER_UIE;  // Enable update interrupt
+}
+
+void timer::start() {
+    instance->CR1 |= TIM_CR1_CEN;
+}
+
+void timer::stop() {
+    instance->CR1 &= ~TIM_CR1_CEN;
+}
+
+void timer::handler() {
+    if (instance->SR & TIM_SR_UIF) {
+        instance->SR &= ~TIM_SR_UIF; // clear flag
+        if (callback) callback();
+    }
+}

@@ -1,0 +1,1 @@
+../Drivers/custom_driver/mcal/uart/uart.cpp:16:17:void USART1_IRQHandler()	16	static

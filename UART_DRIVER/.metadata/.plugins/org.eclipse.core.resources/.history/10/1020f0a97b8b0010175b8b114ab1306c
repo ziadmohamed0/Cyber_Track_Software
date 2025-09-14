@@ -1,0 +1,38 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+
+void led_toggle_callback() {
+    // كود بسيط يغير حالة بنه LED
+    GPIOA->ODR ^= (1 << 5); // لو LED على PA5
+}
+
+int main (int argc, char* argv[]) {
+    SystemInit();
+    // Enable GPIOA clock
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+
+    // Configure PA6 as alternate function push-pull (TIM3_CH1)
+    GPIOA->CRL &= ~(0xF << (6 * 4));
+    GPIOA->CRL |=  (0xB << (6 * 4)); // AF push-pull 50MHz
+
+    // تايمر PWM: بتردد 1kHz
+    // ARR = 1000 → resolution = 1000 steps (0.1%)
+    timer tim3(TIM3, 72 - 1, 1000 - 1, nullptr);
+    tim3.pwm_init(1); // channel1
+    tim3.pwm_set_duty(1, 50); // 50% duty cycle
+
+    while (1) {
+        // تغير الـ duty cycle كل شوية
+        for (int d = 0; d <= 100; d += 10) {
+            tim3.pwm_set_duty(1, d);
+            for (volatile int i=0; i<100000; i++);
+        }
+    }
+}

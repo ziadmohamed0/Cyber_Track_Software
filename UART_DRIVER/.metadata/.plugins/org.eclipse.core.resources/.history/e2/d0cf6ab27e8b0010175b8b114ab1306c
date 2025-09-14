@@ -1,0 +1,61 @@
+/*
+ * ultrasonic.cpp
+ *
+ *  Created on: Sep 6, 2025
+ *      Author: ziad
+ */
+
+#include "ultrasonic.h"
+
+
+extern "C" uint32_t timer_get_counter(TIM_TypeDef* tim);
+
+ultrasonic::ultrasonic(GPIO_PORT trig_port, uint8_t trig_pin,
+                       GPIO_PORT echo_port, uint8_t echo_pin,
+                       TIM_TypeDef* tim)
+    : trig(trig_port, trig_pin, GPIO_STATUS::OUTPUT_50MHz, GPIO_CONFIG::GP_PUSH_PULL),
+      echo(echo_port, echo_pin, GPIO_STATUS::INPUT, GPIO_CONFIG::FLOATING),
+      timer(tim),
+      start_time(0),
+      end_time(0),
+      measuring(false),
+      distance_cm(0.0f)
+{
+    // اربط EXTI line للـ echo pin مع الكول باك
+    new external_interrupt(echo_port, echo_pin, exti_trigger::BOTH,
+        [](uint8_t pin){
+            // هنا محتاج pointer لـ object → نخلي فيه mapping زي ما عملت في DC_MOTOR
+        });
+}
+
+void ultrasonic::init() {
+    // init timer basic up counter (1µs tick)
+    timer->PSC = 72 - 1;   // 72MHz /72 = 1MHz → 1µs
+    timer->ARR = 0xFFFF;
+    timer->CR1 |= TIM_CR1_CEN;
+}
+
+void ultrasonic::trigger() {
+    trig.set();
+    for (volatile int i=0; i<720; i++); // delay ~10µs عند 72MHz
+    trig.clear();
+}
+
+void ultrasonic::echo_handler(uint8_t pin) {
+    if (!measuring) {
+        // rising edge
+        start_time = timer->CNT;
+        measuring = true;
+    } else {
+        // falling edge
+        end_time = timer->CNT;
+        uint32_t diff = (end_time >= start_time) ? (end_time - start_time)
+                                                 : (0xFFFF - start_time + end_time);
+        distance_cm = (diff * 0.0343f) / 2.0f; // speed of sound 343 m/s → 0.0343 cm/µs
+        measuring = false;
+    }
+}
+
+float ultrasonic::get_distance_cm() {
+    return distance_cm;
+}

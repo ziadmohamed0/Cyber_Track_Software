@@ -1,0 +1,40 @@
+/*
+ * ultrasonic.h
+ *
+ *  Created on: Sep 6, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_
+#define CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_
+
+#include "../../mcal/mcal_dfs.h"
+
+// Callback type for echo handling
+typedef void(*echo_callback_t)(uint8_t pin);
+
+class ultrasonic {
+public:
+    ultrasonic(GPIO_PORT trig_port, uint8_t trig_pin,
+               GPIO_PORT echo_port, uint8_t echo_pin,
+               TIM_TypeDef* tim);
+
+    void init();
+    void trigger();
+    float get_distance_cm();
+    void echo_handler(uint8_t pin);
+    bool is_measurement_ready();
+
+private:
+    gpio trig;
+    gpio echo;
+    TIM_TypeDef* timer;
+    volatile uint32_t start_time;
+    volatile uint32_t end_time;
+    volatile bool measuring;
+    volatile float distance_cm;
+    volatile bool measurement_ready;
+    uint8_t echo_pin_num;
+};
+
+#endif /* CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_ */

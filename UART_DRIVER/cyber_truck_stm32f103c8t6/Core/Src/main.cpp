@@ -1,0 +1,18 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  */
+
+#include "../../Drivers/custom_driver/hal/hal_defs.h"
+
+int main (int argc, char* argv[]) {
+    SystemInit();
+
+    while (true) {
+
+    }
+    return 0;
+}

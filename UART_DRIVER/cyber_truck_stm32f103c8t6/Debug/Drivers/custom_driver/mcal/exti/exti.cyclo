@@ -1,0 +1,8 @@
+core_cm3.h:1511:22:void __NVIC_EnableIRQ(IRQn_Type)	2
+exti.cpp:10:1:external_interrupt::external_interrupt(GPIO_PORT, uint8_t, exti_trigger, exti_callback_t)	7
+exti.cpp:52:6:void external_interrupt::enable()	1
+exti.cpp:53:6:void external_interrupt::disable()	1
+exti.cpp:55:6:void external_interrupt::handler()	3
+common.h:37:14:void bit_math::set_bit(volatile T&, uint32_t) [with T = long unsigned int]	1
+common.h:32:14:void bit_math::clear_bit(volatile T&, uint32_t) [with T = long unsigned int]	1
+common.h:47:14:bool bit_math::get_bit(volatile T&, uint32_t) [with T = long unsigned int]	1

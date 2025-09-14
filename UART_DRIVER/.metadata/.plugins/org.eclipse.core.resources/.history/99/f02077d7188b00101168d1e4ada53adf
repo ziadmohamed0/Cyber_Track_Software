@@ -1,0 +1,15 @@
+/*
+ * ultrasonic.h
+ *
+ *  Created on: Sep 6, 2025
+ *      Author: ziad
+ */
+
+#ifndef CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_
+#define CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_
+
+
+
+
+
+#endif /* CUSTOM_DRIVER_HAL_ULTRASONIC_ULTRASONIC_H_ */
